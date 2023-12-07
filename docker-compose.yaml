@@ -1,0 +1,52 @@
+version: '3'
+
+services:
+
+  nginx:
+    build: 
+      context: ./nginx
+    container_name: nginx
+    networks:
+      - node-netkork
+    ports:
+      - "8080:8080"
+    depends_on:
+      - app
+    entrypoint: dockerize -wait tcp://app:3000 -timeout 20s /docker-entrypoint.sh
+    command: ["nginx", "-g", "daemon off;"]
+    restart: always      
+
+  app:
+    build: 
+      context: node
+    container_name: app  
+    entrypoint: dockerize -wait tcp://db:3306 -timeout 20s docker-entrypoint.sh
+    networks:
+      - node-netkork
+    volumes:
+      - ./node:/usr/src/app
+    tty: true 
+    ports:
+      - "3000:3000" 
+    depends_on:
+      - db
+
+  db:
+    image: mysql:5.7
+    command: --innodb-use-native-aio=0
+    container_name: db
+    restart: always
+    tty: true
+    volumes:
+      - ./mysql:/var/lib/mysql
+    environment:
+      - MYSQL_DATABASE=nodedb
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_ALLOW_EMPTY_PASSWORD
+      - MYSQL_RANDOM_ROOT_PASSWORD
+    networks:
+      - node-netkork  
+
+networks:
+  node-netkork:
+    driver: bridge
